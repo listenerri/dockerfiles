@@ -1,0 +1,58 @@
+version: '2'
+
+services:
+  nextcloud-onlyoffice:
+    image: onlyoffice/documentserver:6.2
+    restart: always
+    volumes:
+      - /data/nextcloud/onlyoffice-data/logs:/var/log/onlyoffice
+      - /data/nextcloud/onlyoffice-data/data:/var/www/onlyoffice/Data
+      - /data/nextcloud/onlyoffice-data/lib:/var/lib/onlyoffice
+      - /data/nextcloud/onlyoffice-data/db:/var/lib/postgresql
+    ports:
+      - 6080:80
+
+  nextcloud-mysql:
+    image: mysql:5.7
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+      - /data/nextcloud/mysql-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_pwd
+      - MYSQL_PASSWORD=nextcloud_pwd
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+
+  nextcloud-redis:
+    image: redis:6.2
+    restart: always
+
+  nextcloud:
+    image: nextcloud:21.0.0-apache
+    restart: always
+    ports:
+      - 5080:80
+    depends_on:
+      - nextcloud-mysql
+      - nextcloud-redis
+      - nextcloud-onlyoffice
+    links:
+      - nextcloud-mysql
+      - nextcloud-redis
+      - nextcloud-onlyoffice
+    volumes:
+      - /data/nextcloud/nextcloud-data:/var/www/html
+    environment:
+      - MYSQL_PASSWORD=nextcloud_pwd
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=nextcloud-mysql
+      - REDIS_HOST=nextcloud-redis
+      - NEXTCLOUD_ADMIN_USER=aiwen
+      - NEXTCLOUD_ADMIN_PASSWORD=aiwen_pwd
+      - NEXTCLOUD_TRUSTED_DOMAINS=192.168.1.77:5080
+      - HTTP_PROXY=http://192.168.1.77:1081
+      - HTTPS_PROXY=http://192.168.1.77:1081
+      - NO_PROXY=127.0.0.1,192.168.1.77
+
